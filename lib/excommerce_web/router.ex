@@ -53,10 +53,12 @@ defmodule ExcommerceWeb.Router do
     resources "/orders", OrderController, only: [:create, :show]
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", ExcommerceWeb do
-  #   pipe_through :api
-  # end
+  alias ExcommerceWeb.UrlController
+
+  scope "/api" do
+    pipe_through :api
+    resources "/urls", UrlController, except: [:new, :edit]
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:excommerce, :dev_routes) do
