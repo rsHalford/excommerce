@@ -11,9 +11,9 @@ defmodule ExcommerceWeb.Telemetry do
     children = [
       # Telemetry poller will execute the given period measurements
       # every 10_000ms. Learn more here: https://hexdocs.pm/telemetry_metrics
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
+      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000},
       # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
+      {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -37,7 +37,8 @@ defmodule ExcommerceWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
       summary("phoenix.router_dispatch.stop.duration",
-        tags: [:route],
+        tags: [:method, :route],
+        tag_values: &get_and_put_http_method/1,
         unit: {:native, :millisecond}
       ),
       summary("phoenix.socket_connected.duration",
@@ -49,6 +50,11 @@ defmodule ExcommerceWeb.Telemetry do
       summary("phoenix.channel_handled_in.duration",
         tags: [:event],
         unit: {:native, :millisecond}
+      ),
+      summary("phoenix.live_view.stop.duration",
+        unit: {:native, :millisecond},
+        tags: [:view, :connected?],
+        tag_values: &live_view_metric_tag_values/1
       ),
 
       # Database Metrics
@@ -81,6 +87,19 @@ defmodule ExcommerceWeb.Telemetry do
       summary("vm.total_run_queue_lengths.io")
     ]
   end
+
+  defp get_and_put_http_method(%{conn: %{method: method}} = metadata) do
+  	Map.put(metadata, :method, method)
+  end
+
+  defp live_view_metric_tag_values(metadata) do
+  	metadata
+    |> Map.put(:view, metadata.socket.view)
+    |> Map.put(:connected?, get_connection_status(Phoenix.LiveView.connected?(metadata.socket)))
+  end
+
+  defp get_connection_status(true), do: "Connected"
+  defp get_connection_status(false), do: "Disconnected"
 
   defp periodic_measurements do
     [
